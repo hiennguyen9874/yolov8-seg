@@ -26,7 +26,7 @@ from ultralytics.utils import LOGGER, url2file, colorstr, get_default_args
 from ultralytics.utils.files import file_size
 from ultralytics.utils.torch_utils import get_latest_opset, select_device, smart_inference_mode
 
-from experimental import End2End, End2EndRoialign
+from end2end import End2End, End2EndRoialign
 from warp_model import WarpModel
 
 
@@ -79,6 +79,7 @@ def export_onnx(
     image_size,
     cleanup,
     roi_align,
+    roi_align_type,
     prefix=colorstr("ONNX:"),
 ):
     # YOLOv5 ONNX export
@@ -144,6 +145,7 @@ def export_onnx(
                 device=device,
                 trt=trt,
                 max_wh=max(image_size),
+                roi_align_type=roi_align_type,
             )
         else:
             model = End2End(
@@ -249,6 +251,7 @@ def run(
     trt=False,
     cleanup=False,
     roi_align=False,
+    roi_align_type=0,
 ):
     t = time.time()
     file = Path(
@@ -317,6 +320,7 @@ def run(
         sampling_ratio=sampling_ratio,
         image_size=imgsz,
         roi_align=roi_align,
+        roi_align_type=roi_align_type,
     )
 
     # Finish
@@ -384,6 +388,12 @@ def parse_opt():
     )
     parser.add_argument(
         "--roi-align", action="store_true", help="ONNX: Crop And Resize mask using roialign"
+    )
+    parser.add_argument(
+        "--roi-align-type",
+        type=int,
+        default=0,
+        help="ONNX: Roialign type, 0: RoiAlign, 1: RoIAlignDynamic_TRT, 2: RoIAlign2Dynamic_TRT",
     )
     opt = parser.parse_args()
     print_args(vars(opt))
