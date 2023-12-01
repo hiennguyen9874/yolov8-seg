@@ -20,11 +20,20 @@ if str(ROOT) not in sys.path:
 if platform.system() != "Windows":
     ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
-from ultralytics.utils.checks import check_requirements, check_yaml, check_imgsz, print_args
+from ultralytics.utils.checks import (
+    check_requirements,
+    check_yaml,
+    check_imgsz,
+    print_args,
+)
 from ultralytics.utils.ops import Profile
 from ultralytics.utils import LOGGER, url2file, colorstr, get_default_args
 from ultralytics.utils.files import file_size
-from ultralytics.utils.torch_utils import get_latest_opset, select_device, smart_inference_mode
+from ultralytics.utils.torch_utils import (
+    get_latest_opset,
+    select_device,
+    smart_inference_mode,
+)
 
 from end2end import End2End, End2EndRoialign
 from warp_model import WarpModel
@@ -203,7 +212,9 @@ def export_onnx(
             )
             import onnxsim
 
-            LOGGER.info(f"{prefix} simplifying with onnx-simplifier {onnxsim.__version__}...")
+            LOGGER.info(
+                f"{prefix} simplifying with onnx-simplifier {onnxsim.__version__}..."
+            )
             model_onnx, check = onnxsim.simplify(model_onnx)
             assert check, "assert check failed"
             onnx.save(model_onnx, f)
@@ -212,12 +223,17 @@ def export_onnx(
 
     if cleanup:
         try:
-            LOGGER.info("\nStarting to cleanup ONNX using onnx_graphsurgeon...")
             import onnx_graphsurgeon as gs
+
+            LOGGER.info(
+                f"\nStarting to cleanup ONNX using onnx_graphsurgeon {gs.__version__}..."
+            )
 
             graph = gs.import_onnx(model_onnx)
             graph = graph.cleanup().toposort()
             model_onnx = gs.export_onnx(graph)
+
+            onnx.save(model_onnx, f)
         except Exception as e:
             LOGGER.info(f"Cleanup failure: {e}")
 
@@ -261,7 +277,9 @@ def run(
     # Load PyTorch model
     device = select_device(device)
     if half:
-        assert device.type != "cpu", "--half only compatible with GPU export, i.e. use --device 0"
+        assert (
+            device.type != "cpu"
+        ), "--half only compatible with GPU export, i.e. use --device 0"
         assert (
             not dynamic
         ), "--half not compatible with --dynamic, i.e. use either --half or --dynamic but not both"
@@ -278,7 +296,9 @@ def run(
     # Input
     gs = int(max(model.stride))  # grid size (max stride)
     imgsz = [check_imgsz(x, gs) for x in imgsz]  # verify img_size are gs-multiples
-    im = torch.zeros(batch_size, 3, *imgsz).to(device)  # image size(1,3,320,192) BCHW iDetection
+    im = torch.zeros(batch_size, 3, *imgsz).to(
+        device
+    )  # image size(1,3,320,192) BCHW iDetection
 
     # Update model
     model.eval()  # training mode = no Detect() layer grid construction
@@ -341,7 +361,11 @@ def run(
 def parse_opt():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--weights", nargs="+", type=str, default=ROOT / "yolov5s.pt", help="model.pt path(s)"
+        "--weights",
+        nargs="+",
+        type=str,
+        default=ROOT / "yolov5s.pt",
+        help="model.pt path(s)",
     )
     parser.add_argument(
         "--imgsz",
@@ -354,23 +378,42 @@ def parse_opt():
     )
     parser.add_argument("--nc", type=int, default=80, help="Num classes")
     parser.add_argument("--batch-size", type=int, default=1, help="batch size")
-    parser.add_argument("--device", default="cpu", help="cuda device, i.e. 0 or 0,1,2,3 or cpu")
-    parser.add_argument("--half", action="store_true", help="FP16 half-precision export")
-    parser.add_argument("--inplace", action="store_true", help="set YOLOv5 Detect() inplace=True")
-    parser.add_argument("--int8", action="store_true", help="CoreML/TF INT8 quantization")
-    parser.add_argument("--dynamic", action="store_true", help="ONNX/TF/TensorRT: dynamic axes")
+    parser.add_argument(
+        "--device", default="cpu", help="cuda device, i.e. 0 or 0,1,2,3 or cpu"
+    )
+    parser.add_argument(
+        "--half", action="store_true", help="FP16 half-precision export"
+    )
+    parser.add_argument(
+        "--inplace", action="store_true", help="set YOLOv5 Detect() inplace=True"
+    )
+    parser.add_argument(
+        "--int8", action="store_true", help="CoreML/TF INT8 quantization"
+    )
+    parser.add_argument(
+        "--dynamic", action="store_true", help="ONNX/TF/TensorRT: dynamic axes"
+    )
     parser.add_argument("--simplify", action="store_true", help="ONNX: simplify model")
     parser.add_argument("--opset", type=int, default=12, help="ONNX: opset version")
     parser.add_argument("--verbose", action="store_true", help="TensorRT: verbose log")
-    parser.add_argument("--workspace", type=int, default=4, help="TensorRT: workspace size (GB)")
     parser.add_argument(
-        "--topk-all", type=int, default=100, help="TF.js NMS: topk for all classes to keep"
+        "--workspace", type=int, default=4, help="TensorRT: workspace size (GB)"
     )
-    parser.add_argument("--iou-thres", type=float, default=0.45, help="TF.js NMS: IoU threshold")
+    parser.add_argument(
+        "--topk-all",
+        type=int,
+        default=100,
+        help="TF.js NMS: topk for all classes to keep",
+    )
+    parser.add_argument(
+        "--iou-thres", type=float, default=0.45, help="TF.js NMS: IoU threshold"
+    )
     parser.add_argument(
         "--conf-thres", type=float, default=0.25, help="TF.js NMS: confidence threshold"
     )
-    parser.add_argument("--dynamic-batch", action="store_true", help="ONNX: dynamic batching")
+    parser.add_argument(
+        "--dynamic-batch", action="store_true", help="ONNX: dynamic batching"
+    )
     parser.add_argument("--end2end", action="store_true", help="ONNX: NMS")
     parser.add_argument("--trt", action="store_true", help="ONNX: TRT")
     parser.add_argument("--cleanup", action="store_true", help="ONNX: Cleanup")
@@ -387,7 +430,9 @@ def parse_opt():
         "--sampling-ratio", type=int, default=0, help="ONNX: Roialign sampling ratio"
     )
     parser.add_argument(
-        "--roi-align", action="store_true", help="ONNX: Crop And Resize mask using roialign"
+        "--roi-align",
+        action="store_true",
+        help="ONNX: Crop And Resize mask using roialign",
     )
     parser.add_argument(
         "--roi-align-type",
